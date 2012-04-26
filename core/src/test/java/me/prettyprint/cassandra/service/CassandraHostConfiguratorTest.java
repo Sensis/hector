@@ -10,7 +10,9 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotSame;
+import static org.junit.Assert.assertTrue;
 
 public class CassandraHostConfiguratorTest {
 
@@ -41,10 +43,12 @@ public class CassandraHostConfiguratorTest {
     cassandraHostConfigurator.setCassandraThriftSocketTimeout(3000);
     cassandraHostConfigurator.setMaxWaitTimeWhenExhausted(4000);
     cassandraHostConfigurator.setExhaustedPolicy(ExhaustedPolicy.WHEN_EXHAUSTED_GROW);
+    cassandraHostConfigurator.setUseStaleConnectionCheck(true);
     CassandraHost[] cassandraHosts = cassandraHostConfigurator.buildCassandraHosts();
     // no need to test all, just a smattering
     assertEquals(20, cassandraHosts[1].getMaxActive());
     assertEquals(20, cassandraHosts[0].getMaxActive());
+    assertTrue(cassandraHosts[0].getUseStaleConnectionCheck());
     assertEquals(ExhaustedPolicy.WHEN_EXHAUSTED_GROW, cassandraHosts[1].getExhaustedPolicy());
     assertEquals(4000, cassandraHosts[1].getMaxWaitTimeWhenExhausted());
     assertEquals(3000, cassandraHosts[2].getCassandraThriftSocketTimeout());
@@ -58,6 +62,13 @@ public class CassandraHostConfiguratorTest {
     CassandraHost extraHost = new CassandraHost("localhost:9171");
     cassandraHostConfigurator.applyConfig(extraHost);
     assertEquals(15, extraHost.getMaxActive());
+  }
+
+  @Test
+  public void testStaleConnectionCheckDisabledByDefault() {
+    CassandraHostConfigurator cassandraHostConfigurator = new CassandraHostConfigurator("localhost");
+    CassandraHost[] cassandraHosts = cassandraHostConfigurator.buildCassandraHosts();
+    assertFalse(cassandraHosts[0].getUseStaleConnectionCheck());
   }
 
   @Test

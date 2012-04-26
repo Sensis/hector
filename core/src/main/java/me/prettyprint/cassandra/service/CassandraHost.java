@@ -49,6 +49,7 @@ public final class CassandraHost {
   private ExhaustedPolicy exhaustedPolicy = ExhaustedPolicy.WHEN_EXHAUSTED_BLOCK;
   private boolean useThriftFramedTransport = DEFAULT_USE_FRAMED_THRIFT_TRANSPORT;
   private boolean useSocketKeepalive;
+  private boolean useStaleConnectionCheck;
   //TODO(ran): private FailoverPolicy failoverPolicy = DEFAULT_FAILOVER_POLICY;
 
   public CassandraHost(String url) {
@@ -199,5 +200,14 @@ public final class CassandraHost {
     this.useSocketKeepalive = useSocketKeepalive;
   }
 
-  
+  public boolean getUseStaleConnectionCheck() {
+    return useStaleConnectionCheck;
+  }
+
+  public void setUseStaleConnectionCheck(boolean useStaleConnectionCheck) {
+    this.useStaleConnectionCheck = useStaleConnectionCheck;
+    if ( useStaleConnectionCheck ) {
+      log.info("Connection Pool stale connection check = " + useStaleConnectionCheck + " on host: " + getHost());
+    }
+  }
 }

@@ -13,6 +13,7 @@ import me.prettyprint.hector.api.exceptions.HectorException;
 import me.prettyprint.hector.api.exceptions.HectorTransportException;
 import me.prettyprint.hector.api.exceptions.HPoolExhaustedException;
 
+import org.apache.thrift.TException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,6 +55,7 @@ public class ConcurrentHClientPool implements HClientPool {
           cassandraHost.getMaxActive(),
           maxWaitTimeWhenExhausted});
     }
+
   }
 
 
@@ -63,7 +65,8 @@ public class ConcurrentHClientPool implements HClientPool {
       throw new HInactivePoolException("Attempt to borrow on in-active pool: " + getName());
     }
 
-    HThriftClient cassandraClient = availableClientQueue.poll();
+    HThriftClient cassandraClient = cassandraHost.getUseStaleConnectionCheck()
+            ? getNextNonStaleClient() : availableClientQueue.poll();
     int currentActiveClients = activeClientsCount.incrementAndGet();
 
     try {
@@ -132,6 +135,47 @@ public class ConcurrentHClientPool implements HClientPool {
     return cassandraClient;
   }
 
+  /**
+   * Retrieves the first non stale client from the pool.
+   * @return The first non-stale thrift client.
+   */
+  private HThriftClient getNextNonStaleClient() {
+    HThriftClient candidate;
+    boolean staleCandidate;
+    do {
+      candidate = availableClientQueue.poll();
+      staleCandidate = isStale(candidate);
+      if ( staleCandidate ){
+        log.debug("Discarding stale connection");
+      }
+    } while ( staleCandidate && candidate!=null );
+    return staleCandidate ? null : candidate;
+  }
+
+  /**
+   * Performs a rudimentary staleness check on the supplied thrift client.
+   * @param activeClient The active cassandra client.
+   * @return True if a broken pipe exception is thrown, indicating stale connection.  False otherwise.
+   */
+  private boolean isStale(HThriftClient activeClient) {
+    boolean stale = false;
+    if( activeClient != null ) {
+      try {
+        log.debug("Performing connection stale check");
+        activeClient.getCassandra().describe_cluster_name();
+        log.debug("Connection is not stale");
+      } catch (TException thriftException) {
+        String message = thriftException.getMessage();
+        if ( message != null && message.toUpperCase().contains("BROKEN PIPE") ) {
+          stale = true;
+        }
+        else {
+          throw new HectorTransportException(thriftException);
+        }
+      }
+    }
+    return stale;
+  }
 
 /**
    * Used when we still have room to grow. Return an HThriftClient without

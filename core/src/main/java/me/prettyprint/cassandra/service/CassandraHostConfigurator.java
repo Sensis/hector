@@ -40,6 +40,7 @@ public final class CassandraHostConfigurator implements Serializable {
   private boolean useHostTimeoutTracker = false;
   private boolean runAutoDiscoveryAtStartup = false;
   private boolean useSocketKeepalive = false;
+  private boolean useStaleConnectionCheck = false;
   private HOpTimer opTimer = new NullOpTimer();
 
   public CassandraHostConfigurator() {
@@ -71,6 +72,7 @@ public final class CassandraHostConfigurator implements Serializable {
     cassandraHost.setMaxWaitTimeWhenExhausted(maxWaitTimeWhenExhausted);
     cassandraHost.setUseThriftFramedTransport(useThriftFramedTransport);
     cassandraHost.setUseSocketKeepalive(useSocketKeepalive);
+    cassandraHost.setUseStaleConnectionCheck(useStaleConnectionCheck);
 
     // this is special as it can be passed in as a system property
     if (cassandraThriftSocketTimeout > 0) {
@@ -100,6 +102,10 @@ public final class CassandraHostConfigurator implements Serializable {
    */
   public void setCassandraThriftSocketTimeout(int cassandraThriftSocketTimeout) {
     this.cassandraThriftSocketTimeout = cassandraThriftSocketTimeout;
+  }
+
+  public void setUseStaleConnectionCheck(boolean useStaleConnectionCheck) {
+    this.useStaleConnectionCheck = useStaleConnectionCheck;
   }
 
   public void setExhaustedPolicy(ExhaustedPolicy exhaustedPolicy) {
@@ -163,6 +169,8 @@ public final class CassandraHostConfigurator implements Serializable {
     s.append(hosts);
     s.append("&useThriftFramedTransport=");
     s.append(useThriftFramedTransport);
+    s.append("&useStaleConnectionCheck=");
+    s.append(useStaleConnectionCheck);
     s.append("&retryDownedHosts=");
     s.append(retryDownedHosts);
     s.append("&opTimer=");
@@ -275,6 +283,10 @@ public final class CassandraHostConfigurator implements Serializable {
    */
   public void setRunAutoDiscoveryAtStartup(boolean runAutoDiscoveryAtStartup) {
     this.runAutoDiscoveryAtStartup = runAutoDiscoveryAtStartup;
+  }
+
+  public boolean getUseStaleConnectionCheck() {
+    return useStaleConnectionCheck;
   }
 
   public boolean getUseSocketKeepalive() {
