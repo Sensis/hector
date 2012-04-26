@@ -8,6 +8,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import me.prettyprint.cassandra.service.CassandraHost;
+import me.prettyprint.cassandra.utils.ThriftExceptionUtils;
 import me.prettyprint.hector.api.exceptions.HInactivePoolException;
 import me.prettyprint.hector.api.exceptions.HectorException;
 import me.prettyprint.hector.api.exceptions.HectorTransportException;
@@ -146,7 +147,7 @@ public class ConcurrentHClientPool implements HClientPool {
       candidate = availableClientQueue.poll();
       staleCandidate = isStale(candidate);
       if ( staleCandidate ){
-        log.debug("Discarding stale connection");
+        log.info ("Discarding stale connection from Cassandra Pool");
       }
     } while ( staleCandidate && candidate!=null );
     return staleCandidate ? null : candidate;
@@ -156,6 +157,7 @@ public class ConcurrentHClientPool implements HClientPool {
    * Performs a rudimentary staleness check on the supplied thrift client.
    * @param activeClient The active cassandra client.
    * @return True if a broken pipe exception is thrown, indicating stale connection.  False otherwise.
+   * @throws HectorTransportException when a TException occurs that is not a broken pipe.  Wraps the TException.
    */
   private boolean isStale(HThriftClient activeClient) {
     boolean stale = false;
@@ -165,8 +167,7 @@ public class ConcurrentHClientPool implements HClientPool {
         activeClient.getCassandra().describe_cluster_name();
         log.debug("Connection is not stale");
       } catch (TException thriftException) {
-        String message = thriftException.getMessage();
-        if ( message != null && message.toUpperCase().contains("BROKEN PIPE") ) {
+        if ( ThriftExceptionUtils.isBrokenSocket(thriftException) ) {
           stale = true;
         }
         else {
@@ -177,7 +178,7 @@ public class ConcurrentHClientPool implements HClientPool {
     return stale;
   }
 
-/**
+  /**
    * Used when we still have room to grow. Return an HThriftClient without
    * having to wait on polling logic. (But still increment all the counters)
    * @return
